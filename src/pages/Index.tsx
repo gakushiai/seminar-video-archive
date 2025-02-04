@@ -1,15 +1,32 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import SearchBar from "@/components/SearchBar";
 import FilterBar from "@/components/FilterBar";
 import VideoCard from "@/components/VideoCard";
-import { videos } from "@/data/videos";
+import { useFirestore } from "@/hooks/use-firestore";
+import type { Video } from "@/data/videos";
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [sortBy, setSortBy] = useState("date-desc");
+  const [videos, setVideos] = useState<Video[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const { getVideos, getCategories } = useFirestore();
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const [fetchedVideos, fetchedCategories] = await Promise.all([
+        getVideos(),
+        getCategories()
+      ]);
+      setVideos(fetchedVideos);
+      setCategories(fetchedCategories);
+    };
+
+    fetchData();
+  }, []);
 
   const filteredVideos = useMemo(() => {
     console.log("Filtering videos with:", { searchQuery, selectedCategory, sortBy });
@@ -51,7 +68,7 @@ const Index = () => {
 
     console.log("Filtered videos:", filtered);
     return filtered;
-  }, [searchQuery, selectedCategory, sortBy]);
+  }, [searchQuery, selectedCategory, sortBy, videos]);
 
   return (
     <div className="min-h-screen bg-youtube-light">
@@ -66,6 +83,7 @@ const Index = () => {
         <FilterBar
           onCategoryChange={setSelectedCategory}
           onSortChange={setSortBy}
+          categories={categories}
         />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredVideos.map((video) => (
@@ -73,7 +91,7 @@ const Index = () => {
           ))}
         </div>
         {filteredVideos.length === 0 && (
-          <p className="text-center text-gray-500">No videos found</p>
+          <p className="text-center text-gray-500">動画が見つかりませんでした</p>
         )}
       </div>
     </div>
