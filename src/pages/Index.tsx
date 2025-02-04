@@ -1,4 +1,6 @@
 import { useState, useMemo } from "react";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import SearchBar from "@/components/SearchBar";
 import FilterBar from "@/components/FilterBar";
 import VideoCard from "@/components/VideoCard";
@@ -19,7 +21,10 @@ const Index = () => {
       filtered = filtered.filter(
         (video) =>
           video.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          video.description.toLowerCase().includes(searchQuery.toLowerCase())
+          video.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          video.tags.some(tag => 
+            tag.toLowerCase().includes(searchQuery.toLowerCase())
+          )
       );
     }
 
@@ -51,7 +56,12 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-youtube-light">
       <div className="container mx-auto py-8 space-y-8">
-        <h1 className="text-4xl font-bold text-center mb-8">Video Collection</h1>
+        <div className="flex justify-between items-center">
+          <h1 className="text-4xl font-bold text-center">Video Collection</h1>
+          <Link to="/">
+            <Button variant="outline">LPへ戻る</Button>
+          </Link>
+        </div>
         <SearchBar onSearch={setSearchQuery} />
         <FilterBar
           onCategoryChange={setSelectedCategory}

@@ -5,16 +5,34 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { videos } from "@/data/videos";
+import { Link, useNavigate } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
+import { X } from "lucide-react";
 
 const Admin = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [newVideo, setNewVideo] = useState({
     title: "",
     description: "",
     url: "",
     category: "Programming",
+    tags: [] as string[],
   });
-  const [videosPassword, setVideosPassword] = useState(localStorage.getItem("videosPassword") || "1111");
+  const [videosPassword, setVideosPassword] = useState(
+    localStorage.getItem("videosPassword") || "1111"
+  );
+  const [newTag, setNewTag] = useState("");
+
+  const generateRandomPassword = () => {
+    const password = Math.floor(1000 + Math.random() * 9000).toString();
+    setVideosPassword(password);
+    localStorage.setItem("videosPassword", password);
+    toast({
+      title: "パスワード生成完了",
+      description: `新しいパスワード: ${password}`,
+    });
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,6 +64,7 @@ const Admin = () => {
         description: "",
         url: "",
         category: "Programming",
+        tags: [],
       });
     } catch (error) {
       toast({
@@ -65,9 +84,37 @@ const Admin = () => {
     });
   };
 
+  const addTag = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newTag && !newVideo.tags.includes(newTag)) {
+      setNewVideo({
+        ...newVideo,
+        tags: [...newVideo.tags, newTag],
+      });
+      setNewTag("");
+    }
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    setNewVideo({
+      ...newVideo,
+      tags: newVideo.tags.filter((tag) => tag !== tagToRemove),
+    });
+  };
+
   return (
     <div className="container mx-auto py-8">
-      <h1 className="text-3xl font-bold mb-8">管理者ページ</h1>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold">管理者ページ</h1>
+        <div className="space-x-4">
+          <Button onClick={() => navigate("/videos")} variant="outline">
+            動画一覧へ
+          </Button>
+          <Link to="/">
+            <Button variant="outline">LPへ戻る</Button>
+          </Link>
+        </div>
+      </div>
       
       <div className="max-w-2xl mx-auto space-y-8">
         {/* パスワード設定フォーム */}
@@ -76,13 +123,18 @@ const Admin = () => {
           <form onSubmit={handlePasswordChange} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="password">パスワード</Label>
-              <Input
-                id="password"
-                type="text"
-                value={videosPassword}
-                onChange={(e) => setVideosPassword(e.target.value)}
-                required
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="password"
+                  type="text"
+                  value={videosPassword}
+                  onChange={(e) => setVideosPassword(e.target.value)}
+                  required
+                />
+                <Button type="button" onClick={generateRandomPassword}>
+                  ランダム生成
+                </Button>
+              </div>
             </div>
             <Button type="submit">パスワードを更新</Button>
           </form>
@@ -124,6 +176,29 @@ const Admin = () => {
                 placeholder="https://youtube.com/watch?v=..."
                 required
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="tags">タグ</Label>
+              <form onSubmit={addTag} className="flex gap-2">
+                <Input
+                  id="tags"
+                  value={newTag}
+                  onChange={(e) => setNewTag(e.target.value)}
+                  placeholder="タグを入力..."
+                />
+                <Button type="submit">追加</Button>
+              </form>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {newVideo.tags.map((tag) => (
+                  <Badge key={tag} variant="secondary" className="flex items-center gap-1">
+                    {tag}
+                    <X
+                      className="h-3 w-3 cursor-pointer"
+                      onClick={() => removeTag(tag)}
+                    />
+                  </Badge>
+                ))}
+              </div>
             </div>
             <Button type="submit" className="w-full">
               動画を追加

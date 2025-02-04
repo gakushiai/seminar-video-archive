@@ -5,6 +5,7 @@ export interface Video {
   url: string;
   thumbnailUrl: string;
   category: string;
+  tags: string[];
   date: string;
 }
 
@@ -16,6 +17,7 @@ export const videos: Video[] = [
     url: "https://youtu.be/BT_zrgSH-FU",
     thumbnailUrl: "https://img.youtube.com/vi/BT_zrgSH-FU/maxresdefault.jpg",
     category: "Programming",
+    tags: ["AI", "プログラミング"],
     date: "2024-01-15",
   },
   {
@@ -25,6 +27,7 @@ export const videos: Video[] = [
     url: "https://youtu.be/nnZJqvu9-Cw",
     thumbnailUrl: "https://img.youtube.com/vi/nnZJqvu9-Cw/maxresdefault.jpg",
     category: "Programming",
+    tags: ["Web", "アプリ"],
     date: "2024-01-16",
   },
   {
@@ -34,6 +37,7 @@ export const videos: Video[] = [
     url: "https://www.youtube.com/watch?v=SqcY0GlETPk",
     thumbnailUrl: "https://img.youtube.com/vi/SqcY0GlETPk/maxresdefault.jpg",
     category: "Programming",
+    tags: ["React", "JavaScript"],
     date: "2024-01-15",
   },
   {
@@ -43,6 +47,7 @@ export const videos: Video[] = [
     url: "https://www.youtube.com/watch?v=Q33KBiDriJY",
     thumbnailUrl: "https://img.youtube.com/vi/Q33KBiDriJY/maxresdefault.jpg",
     category: "Programming",
+    tags: ["Web", "Development"],
     date: "2024-01-10",
   },
 ];
