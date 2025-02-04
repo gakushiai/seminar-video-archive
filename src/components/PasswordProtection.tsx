@@ -16,7 +16,15 @@ const PasswordProtection = ({ targetPath }: PasswordProtectionProps) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (password === "1111") {
+    // 管理者ページのパスワードは固定
+    if (targetPath === "/admin" && password === "1111") {
+      navigate(targetPath);
+      return;
+    }
+
+    // 動画一覧のパスワードはローカルストレージから取得
+    const videosPassword = localStorage.getItem("videosPassword") || "1111";
+    if (password === videosPassword) {
       navigate(targetPath);
     } else {
       toast({
