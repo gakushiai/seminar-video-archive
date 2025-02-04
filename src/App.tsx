@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import Landing from "./pages/Landing";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
+import PasswordProtection from "./components/PasswordProtection";
 
 const queryClient = new QueryClient();
 
@@ -18,7 +19,9 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Landing />} />
+          <Route path="/videos-auth" element={<PasswordProtection targetPath="/videos" />} />
           <Route path="/videos" element={<Index />} />
+          <Route path="/admin-auth" element={<PasswordProtection targetPath="/admin" />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -15,12 +15,12 @@ const Landing = () => {
             厳選されたプログラミング学習動画を効率的に探索できるプラットフォーム
           </p>
           <div className="space-x-4">
-            <Link to="/videos">
+            <Link to="/videos-auth">
               <Button size="lg" className="bg-youtube-red hover:bg-red-600">
                 動画を探す
               </Button>
             </Link>
-            <Link to="/admin">
+            <Link to="/admin-auth">
               <Button size="lg" variant="outline">
                 管理者ページ
               </Button>
