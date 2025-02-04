@@ -45,15 +45,6 @@ export const videos: Video[] = [
     category: "Programming",
     date: "2024-01-10",
   },
-  {
-    id: "5",
-    title: "Cooking Basics",
-    description: "Learn essential cooking techniques",
-    url: "https://www.youtube.com/watch?v=1Gs8m6HCqZw",
-    thumbnailUrl: "https://img.youtube.com/vi/1Gs8m6HCqZw/maxresdefault.jpg",
-    category: "Cooking",
-    date: "2024-01-05",
-  },
 ];
 
 export const categories = [...new Set(videos.map((video) => video.category))];
