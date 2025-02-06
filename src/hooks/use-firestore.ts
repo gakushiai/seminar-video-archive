@@ -1,6 +1,16 @@
 import { db } from "@/lib/firebase";
-import { collection, doc, getDocs, setDoc, deleteDoc, getDoc } from "firebase/firestore";
+import { collection, doc, getDocs, setDoc, deleteDoc, getDoc, writeBatch } from "firebase/firestore";
 import { Video } from "@/data/videos";
+import { getAuth, deleteUser, signInWithEmailAndPassword } from "firebase/auth";
+import { getFunctions, httpsCallable } from "firebase/functions";
+
+interface User {
+  id: string;
+  email: string | null;
+  role: "visitor" | "subscriber" | "admin";
+  discordId: string | null;
+  createdAt: string;
+}
 
 export const useFirestore = () => {
   const getVideos = async () => {
@@ -68,6 +78,40 @@ export const useFirestore = () => {
     await deleteDoc(categoryRef);
   };
 
+  const getAllUsers = async () => {
+    const usersRef = collection(db, "users");
+    const snapshot = await getDocs(usersRef);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+  };
+
+  const updateUserRole = async (userId: string, role: User["role"]) => {
+    const userRef = doc(db, "users", userId);
+    await setDoc(userRef, { role }, { merge: true });
+  };
+
+  const updateUserDiscordId = async (userId: string, discordId: string) => {
+    const userRef = doc(db, "users", userId);
+    await setDoc(userRef, { discordId }, { merge: true });
+  };
+
+  const deleteUsers = async (userIds: string[]) => {
+    const batch = writeBatch(db);
+    
+    // Firestoreのバッチ処理を準備
+    userIds.forEach((userId) => {
+      const userRef = doc(db, "users", userId);
+      batch.delete(userRef);
+    });
+
+    try {
+      // Firestoreからユーザーを削除
+      await batch.commit();
+    } catch (error) {
+      console.error("ユーザーの削除に失敗しました:", error);
+      throw error;
+    }
+  };
+
   return {
     getVideos,
     addVideo,
@@ -80,5 +124,9 @@ export const useFirestore = () => {
     getCategories,
     addCategory,
     removeCategory,
+    getAllUsers,
+    updateUserRole,
+    updateUserDiscordId,
+    deleteUsers,
   };
 }; 

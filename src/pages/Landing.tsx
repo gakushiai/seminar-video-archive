@@ -58,11 +58,6 @@ const Landing = () => {
                   動画を探す
                 </Button>
               </Link>
-              <Link to="/admin-auth">
-                <Button size="lg" variant="outline" className="border-2 border-purple-200 text-purple-700 hover:bg-purple-50 px-8 py-6 rounded-lg text-lg font-semibold tracking-wide transition-all duration-300 hover:translate-y-[-2px]">
-                  管理者ページ
-                </Button>
-              </Link>
             </motion.div>
           </div>
         </Card>

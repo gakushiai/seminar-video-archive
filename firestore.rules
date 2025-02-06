@@ -2,25 +2,65 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // videosコレクションは誰でも読み取り可能、書き込みは管理者のみ
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isSubscriber() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        (
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'subscriber' ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+        );
+    }
+
+    // videosコレクションはsubscriberとadminのみ読み取り可能、書き込みは管理者のみ
     match /videos/{videoId} {
-      allow read: if true;
-      allow write: if true;
+      allow read: if isSubscriber();
+      allow write: if isAdmin();
     }
     
-    // settingsコレクションのpasswordドキュメントのみアクセス可能
+    // usersコレクションは認証済みユーザーは自分のドキュメントのみ読み取り可能、書き込みは管理者のみ
+    // ただし、自分のドキュメントの作成は許可
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow create: if isAuthenticated() && 
+        request.auth.uid == userId && 
+        request.resource.data.keys().hasAll(['email', 'role', 'discordId', 'createdAt']) &&
+        request.resource.data.discordId is string;
+      allow update: if isAdmin() || 
+        (request.auth.uid == userId && 
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['discordId']));
+      allow delete: if isAdmin();
+    }
+    
+    // settingsコレクションのpasswordドキュメントは管理者のみアクセス可能
     match /settings/password {
-      allow read, write: if true;
+      allow read, write: if isAdmin();
+    }
+
+    // settingsコレクションのdefaultRoleドキュメントは管理者のみアクセス可能
+    match /settings/defaultRole {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
     }
     
-    // admin_settingsコレクションのadmin_passwordドキュメントのみアクセス可能
+    // admin_settingsコレクションのadmin_passwordドキュメントは管理者のみアクセス可能
     match /admin_settings/admin_password {
-      allow read, write: if true;
+      allow read, write: if isAdmin();
     }
     
-    // categoriesコレクションは誰でも読み書き可能
+    // categoriesコレクションはsubscriberとadminのみ読み取り可能、書き込みは管理者のみ
     match /categories/{categoryId} {
-      allow read, write: if true;
+      allow read: if isSubscriber();
+      allow write: if isAdmin();
     }
   }
 } 

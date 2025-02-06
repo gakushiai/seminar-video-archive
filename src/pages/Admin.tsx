@@ -4,11 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, Navigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
-import { X, Search, SortAsc, SortDesc, FileSpreadsheet, Grid, Table2 } from "lucide-react";
+import { X, Search, SortAsc, SortDesc, FileSpreadsheet, Grid, Table2, UserCog } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useFirestore } from "@/hooks/use-firestore";
+import { useAuth } from "@/hooks/use-auth";
 import type { Video } from "@/data/videos";
 import VideoCard from "@/components/VideoCard";
 import { exportToXLSX } from "@/lib/utils";
@@ -35,10 +36,20 @@ import {
 type SortField = "title" | "date" | "category";
 type SortOrder = "asc" | "desc";
 type ViewMode = "grid" | "table";
+type UserRole = "visitor" | "subscriber" | "admin";
+
+interface User {
+  id: string;
+  email: string | null;
+  role: UserRole;
+  discordId: string | null;
+  createdAt: string;
+}
 
 const Admin = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { user, userRole, loading, getDefaultRole, setDefaultRole } = useAuth();
   const {
     getVideos,
     addVideo,
@@ -47,6 +58,10 @@ const Admin = () => {
     getCategories: fetchCategories,
     addCategory: addFirestoreCategory,
     removeCategory: removeFirestoreCategory,
+    getAllUsers,
+    updateUserRole,
+    updateUserDiscordId,
+    deleteUsers,
   } = useFirestore();
 
   const [videos, setVideos] = useState<Video[]>([]);
@@ -69,14 +84,25 @@ const Admin = () => {
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
   const [editingVideo, setEditingVideo] = useState<Video | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
+  const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [userSearchField, setUserSearchField] = useState<"email" | "discordId">("email");
+  const [newDiscordId, setNewDiscordId] = useState("");
+  const [isEditingDiscordId, setIsEditingDiscordId] = useState(false);
+  const [defaultRole, setDefaultRoleState] = useState<UserRole>("visitor");
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [isDeleteUsersDialogOpen, setIsDeleteUsersDialogOpen] = useState(false);
 
   useEffect(() => {
     const initializeData = async () => {
       const fetchedVideos = await getVideos();
       const fetchedCategories = await fetchCategories();
+      const currentDefaultRole = await getDefaultRole();
       
       setVideos(fetchedVideos);
       setCategories(fetchedCategories);
+      setDefaultRoleState(currentDefaultRole);
       
       if (fetchedCategories.length > 0) {
         setNewVideo(prev => ({ ...prev, category: fetchedCategories[0] }));
@@ -84,6 +110,24 @@ const Admin = () => {
     };
 
     initializeData();
+  }, []);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const fetchedUsers = await getAllUsers();
+        setUsers(fetchedUsers);
+      } catch (error) {
+        console.error("ユーザー情報の取得に失敗しました:", error);
+        toast({
+          title: "エラー",
+          description: "ユーザー情報の取得に失敗しました",
+          variant: "destructive",
+        });
+      }
+    };
+
+    fetchUsers();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -297,19 +341,124 @@ const Admin = () => {
     link.click();
   };
 
+  const handleRoleChange = async (userId: string, newRole: UserRole) => {
+    try {
+      await updateUserRole(userId, newRole);
+      setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
+      toast({
+        title: "成功",
+        description: "ユーザーロールを更新しました",
+      });
+    } catch (error) {
+      console.error("ロールの更新に失敗しました:", error);
+      toast({
+        title: "エラー",
+        description: "ロールの更新に失敗しました",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const filteredUsers = users.filter(user => {
+    const searchQuery = userSearchQuery.toLowerCase();
+    if (userSearchField === "email") {
+      return user.email?.toLowerCase().includes(searchQuery) || false;
+    } else {
+      return user.discordId?.toLowerCase().includes(searchQuery) || false;
+    }
+  });
+
+  const handleDiscordIdUpdate = async () => {
+    if (!user) return;
+    try {
+      await updateUserDiscordId(user.uid, newDiscordId);
+      setUsers(users.map(u => u.id === user.uid ? { ...u, discordId: newDiscordId } : u));
+      setIsEditingDiscordId(false);
+      toast({
+        title: "成功",
+        description: "Discord IDを更新しました",
+      });
+    } catch (error) {
+      console.error("Discord IDの更新に失敗しました:", error);
+      toast({
+        title: "エラー",
+        description: "Discord IDの更新に失敗しました",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDefaultRoleChange = async (newRole: UserRole) => {
+    try {
+      const result = await setDefaultRole(newRole);
+      if (result.success) {
+        setDefaultRoleState(newRole);
+        toast({
+          title: "成功",
+          description: "デフォルトロールを更新しました",
+        });
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error: any) {
+      console.error("デフォルトロールの更新に失敗しました:", error);
+      toast({
+        title: "エラー",
+        description: "デフォルトロールの更新に失敗しました",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteUsers = async () => {
+    try {
+      await deleteUsers(selectedUsers);
+      setUsers(users.filter(user => !selectedUsers.includes(user.id)));
+      setSelectedUsers([]);
+      setIsDeleteUsersDialogOpen(false);
+      toast({
+        title: "成功",
+        description: "選択したユーザーを削除しました",
+      });
+    } catch (error) {
+      console.error("ユーザーの削除に失敗しました:", error);
+      toast({
+        title: "エラー",
+        description: "ユーザーの削除に失敗しました",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // ロード中は何も表示しない
+  if (loading) {
+    return <div className="flex justify-center items-center min-h-screen">
+      <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+    </div>;
+  }
+
+  // 未ログインユーザーはログインページにリダイレクト
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // admin以外のユーザーは動画一覧ページにリダイレクト
+  if (userRole !== "admin") {
+    return <Navigate to="/videos" replace />;
+  }
+
   return (
     <div className="container mx-auto py-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">管理者ページ</h1>
         <div className="space-x-4">
-          <Link to="/admin/video-password">
-            <Button variant="outline">動画一覧パスワード設定</Button>
-          </Link>
-          <Link to="/admin/admin-password">
-            <Button variant="outline">管理者パスワード設定</Button>
-          </Link>
-          <Button onClick={() => navigate("/videos")} variant="outline">
-            動画一覧へ
+          <Button
+            variant="outline"
+            onClick={() => setIsRoleDialogOpen(true)}
+            className="flex items-center gap-2"
+          >
+            <UserCog className="h-4 w-4" />
+            ロール管理
           </Button>
           <Link to="/">
             <Button variant="outline">LPへ戻る</Button>
@@ -317,7 +466,209 @@ const Admin = () => {
         </div>
       </div>
       
+      {/* ロール管理ダイアログ */}
+      <Dialog open={isRoleDialogOpen} onOpenChange={setIsRoleDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>ユーザーロール管理</DialogTitle>
+            <DialogDescription>
+              ユーザーのロールとDiscord IDを管理できます
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="flex gap-2 justify-between items-center">
+              <div className="flex gap-2">
+                <Select
+                  value={userSearchField}
+                  onValueChange={(value: "email" | "discordId") => setUserSearchField(value)}
+                >
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="検索フィールド" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="email">メールアドレス</SelectItem>
+                    <SelectItem value="discordId">Discord ID</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="relative flex-1">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+                  <Input
+                    placeholder={userSearchField === "email" ? "メールアドレスで検索..." : "Discord IDで検索..."}
+                    value={userSearchQuery}
+                    onChange={(e) => setUserSearchQuery(e.target.value)}
+                    className="pl-8"
+                  />
+                </div>
+              </div>
+              {selectedUsers.length > 0 && (
+                <Button
+                  variant="destructive"
+                  onClick={() => setIsDeleteUsersDialogOpen(true)}
+                  className="flex items-center gap-2"
+                >
+                  <X className="h-4 w-4" />
+                  選択したユーザーを削除 ({selectedUsers.length})
+                </Button>
+              )}
+            </div>
+
+            <div className="border rounded-lg">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="px-4 py-2 text-left">
+                      <input
+                        type="checkbox"
+                        checked={selectedUsers.length === filteredUsers.length}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedUsers(filteredUsers.map(u => u.id));
+                          } else {
+                            setSelectedUsers([]);
+                          }
+                        }}
+                        className="rounded border-gray-300"
+                      />
+                    </th>
+                    <th className="px-4 py-2 text-left">メールアドレス</th>
+                    <th className="px-4 py-2 text-left">Discord ID</th>
+                    <th className="px-4 py-2 text-left">現在のロール</th>
+                    <th className="px-4 py-2 text-left">ロールを変更</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.map((u) => (
+                    <tr key={u.id} className="border-b">
+                      <td className="px-4 py-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedUsers.includes(u.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedUsers([...selectedUsers, u.id]);
+                            } else {
+                              setSelectedUsers(selectedUsers.filter(id => id !== u.id));
+                            }
+                          }}
+                          className="rounded border-gray-300"
+                        />
+                      </td>
+                      <td className="px-4 py-2">{u.email}</td>
+                      <td className="px-4 py-2">
+                        {u.discordId ? (
+                          <Badge variant="outline">{u.discordId}</Badge>
+                        ) : (
+                          <span className="text-gray-400">未設定</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2">
+                        <Badge>{u.role}</Badge>
+                      </td>
+                      <td className="px-4 py-2">
+                        <Select
+                          value={u.role}
+                          onValueChange={(value: UserRole) => handleRoleChange(u.id, value)}
+                        >
+                          <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="ロールを選択" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="visitor">visitor</SelectItem>
+                            <SelectItem value="subscriber">subscriber</SelectItem>
+                            <SelectItem value="admin">admin</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsRoleDialogOpen(false)}>
+              閉じる
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="max-w-7xl mx-auto space-y-8">
+        {/* プロフィール情報セクション */}
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h2 className="text-xl font-semibold mb-4">プロフィール情報</h2>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>メールアドレス</Label>
+                <p className="mt-1">{user?.email}</p>
+              </div>
+              <div>
+                <Label>ロール</Label>
+                <Badge className="mt-1">{userRole}</Badge>
+              </div>
+              <div className="col-span-2">
+                <Label>Discord ID</Label>
+                <div className="flex gap-2 mt-1">
+                  {isEditingDiscordId ? (
+                    <>
+                      <Input
+                        value={newDiscordId}
+                        onChange={(e) => setNewDiscordId(e.target.value)}
+                        placeholder="新しいDiscord IDを入力..."
+                      />
+                      <Button onClick={handleDiscordIdUpdate}>保存</Button>
+                      <Button variant="outline" onClick={() => setIsEditingDiscordId(false)}>
+                        キャンセル
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <p className="py-2">
+                        {users.find(u => u.id === user?.uid)?.discordId || "未設定"}
+                      </p>
+                      <Button variant="outline" onClick={() => {
+                        setNewDiscordId(users.find(u => u.id === user?.uid)?.discordId || "");
+                        setIsEditingDiscordId(true);
+                      }}>
+                        編集
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 新規ユーザーのデフォルトロール設定 */}
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h2 className="text-xl font-semibold mb-4">新規ユーザーのデフォルトロール設定</h2>
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <Label htmlFor="defaultRole" className="min-w-[200px]">デフォルトロール</Label>
+              <Select
+                value={defaultRole}
+                onValueChange={(value: UserRole) => handleDefaultRoleChange(value)}
+              >
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="デフォルトロールを選択" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="visitor">visitor</SelectItem>
+                  <SelectItem value="subscriber">subscriber</SelectItem>
+                  <SelectItem value="admin">admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-sm text-gray-500">
+              このロールは新規登録したユーザーに自動的に割り当てられます。
+            </p>
+          </div>
+        </div>
+
         {/* カテゴリー管理セクション */}
         <div className="bg-white p-6 rounded-lg shadow-md">
           <h2 className="text-xl font-semibold mb-4">カテゴリー管理</h2>
@@ -639,6 +990,26 @@ const Admin = () => {
           )}
         </div>
       </div>
+
+      {/* ユーザー削除確認ダイアログ */}
+      <AlertDialog open={isDeleteUsersDialogOpen} onOpenChange={setIsDeleteUsersDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ユーザーの削除</AlertDialogTitle>
+            <AlertDialogDescription>
+              選択した{selectedUsers.length}人のユーザーをFirestoreから削除してもよろしいですか？
+              この操作は取り消せません。
+              
+              注意: この操作はFirestoreからのみユーザーを削除します。
+              認証情報（Authentication）は削除されません。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>キャンセル</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteUsers}>削除</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={!!videoToDelete} onOpenChange={() => setVideoToDelete(null)}>
         <AlertDialogContent>
