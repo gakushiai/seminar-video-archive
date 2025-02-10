@@ -1,69 +1,107 @@
-# Welcome to your Lovable project
+# セミナー動画アーカイブ
 
-## Project info
+このプロジェクトは、セミナー動画を管理・共有するための Web アプリケーションです。
 
-**URL**: https://lovable.dev/projects/bc3b9169-796b-448d-ad26-daca45b3d3e8
+## セットアップ手順
 
-## How can I edit this code?
+### 1. リポジトリのクローンと設定
 
-There are several ways of editing your application.
+```bash
+# リポジトリをクローン
+git clone https://github.com/gakushiai/seminar-video-archive.git
+cd seminar-video-archive
 
-**Use Lovable**
+# 新しいリポジトリを作成する場合
+# 1. GitHubで新しいリポジトリを作成
+# 2. リモートリポジトリの変更
+git remote remove origin
+git remote add origin https://github.com/[あなたの名前]/seminar-video-archive.git
+git branch -M main
+git push -u origin main
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/bc3b9169-796b-448d-ad26-daca45b3d3e8) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### 2. Firebase 設定
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+1. [Firebase Console](https://console.firebase.google.com/)にアクセス
+2. 新しいプロジェクトを作成
+3. 以下の機能を有効化：
 
-**Use GitHub Codespaces**
+   - Authentication (Google 認証)
+   - Firestore Database
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+4. Firebase プロジェクトの設定から必要な情報を取得し、`.env`ファイルを作成：
 
-## What technologies are used for this project?
+```env
+VITE_FIREBASE_API_KEY=your_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your_auth_domain
+VITE_FIREBASE_PROJECT_ID=your_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_storage_bucket
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
+VITE_FIREBASE_APP_ID=your_app_id
+```
 
-This project is built with .
+5. Firebase CLI をインストールしてプロジェクトを初期化：
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+```bash
+npm install -g firebase-tools
+firebase login
+firebase init
+```
 
-## How can I deploy this project?
+### 3. Netlify デプロイ設定
 
-Simply open [Lovable](https://lovable.dev/projects/bc3b9169-796b-448d-ad26-daca45b3d3e8) and click on Share -> Publish.
+1. [Netlify](https://www.netlify.com/)でアカウントを作成
+2. 新しいサイトを GitHub リポジトリから作成
+3. ビルド設定：
+   - Build command: `npm run build`
+   - Publish directory: `dist`
+4. 環境変数の設定：
 
-## I want to use a custom domain - is that possible?
+   - Netlify のサイト設定 → Build & Deploy → Environment variables
+   - `.env`ファイルの内容をそれぞれ追加
 
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+5. デプロイ：
+   - GitHub にプッシュすると自動的にデプロイされます
+   - 手動デプロイの場合：
+     ```bash
+     npm run build
+     netlify deploy --prod
+     ```
+
+### 4. ローカル開発
+
+```bash
+# 依存関係のインストール
+npm install
+
+# 開発サーバーの起動
+npm run dev
+
+# ビルド
+npm run build
+```
+
+## ライセンス
+
+MIT License
+
+Copyright (c) 2025 [gakushiai]
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
