@@ -28,7 +28,7 @@ const Landing = () => {
               className="space-y-6"
             >
               <h1 className="text-5xl md:text-7xl font-black text-zinc-900 tracking-tighter leading-none">
-                ACL<span className="text-purple-600">セミナー</span>
+                セミナー<span className="text-purple-600">ビデオ</span>
               </h1>
               <div className="relative">
                 <span className="block text-3xl md:text-5xl font-extrabold text-zinc-800 tracking-tight leading-none">
