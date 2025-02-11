@@ -95,15 +95,19 @@ const VideoAuth = () => {
             </div>
             {isRegistering && (
               <div className="space-y-2">
-                <Label htmlFor="discordId">Discord ID</Label>
+                <Label htmlFor="discordId">Discord ID（任意）</Label>
                 <Input
                   id="discordId"
                   type="text"
                   value={discordId}
                   onChange={(e) => setDiscordId(e.target.value)}
-                  required
-                  placeholder="example#1234"
+                  placeholder="例: example#1234"
+                  aria-label="Discord ID（任意の入力項目です）"
+                  aria-required="false"
                 />
+                <p className="text-sm text-gray-500">
+                  Discord IDの登録は任意です。後からマイページで設定することもできます。
+                </p>
               </div>
             )}
             <div className="space-y-2">

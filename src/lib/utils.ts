@@ -84,3 +84,93 @@ export function exportToXLSX(videos: Video[]): Blob {
   const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
   return new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 }
+
+export function getYouTubeThumbnailUrl(
+  videoId: string,
+  type: 'video' | 'playlist' | 'live',
+  firstVideoId: string | null = null
+): string {
+  // 動画IDから余分な文字を削除
+  const cleanVideoId = videoId.replace(/^v=/, '');
+  
+  switch (type) {
+    case 'video':
+    case 'live':
+      // 通常の動画とライブ配信は maxresdefault を試し、失敗したら hqdefault を使用
+      return `https://img.youtube.com/vi/${cleanVideoId}/hqdefault.jpg`;
+    case 'playlist':
+      // プレイリストの場合、firstVideoIdがある場合はその動画のサムネイルを使用
+      if (firstVideoId) {
+        const cleanFirstVideoId = firstVideoId.replace(/^v=/, '');
+        return `https://img.youtube.com/vi/${cleanFirstVideoId}/hqdefault.jpg`;
+      }
+      // プレイリスト用のデフォルトアイコン
+      return '/assets/playlist-default.svg';
+    default:
+      return '';
+  }
+}
+
+export function parseYouTubeUrl(url: string): { videoId: string | null; type: 'video' | 'playlist' | 'live' | null; firstVideoId: string | null } {
+  try {
+    const urlObj = new URL(url);
+    
+    // youtu.be形式のURLを処理
+    if (urlObj.hostname === 'youtu.be') {
+      const videoId = urlObj.pathname.slice(1);
+      return {
+        videoId,
+        type: 'video',
+        firstVideoId: videoId
+      };
+    }
+
+    // www.youtube.com形式のURLを処理
+    if (urlObj.hostname === 'www.youtube.com' || urlObj.hostname === 'youtube.com') {
+      // 通常の動画
+      const videoId = urlObj.searchParams.get('v');
+      if (videoId) {
+        return {
+          videoId,
+          type: 'video',
+          firstVideoId: videoId
+        };
+      }
+
+      // プレイリスト
+      const playlistId = urlObj.searchParams.get('list');
+      if (playlistId) {
+        // プレイリストの場合、最初の動画のIDも取得（あれば）
+        const firstVideoId = urlObj.searchParams.get('v');
+        return {
+          videoId: playlistId,
+          type: 'playlist',
+          firstVideoId
+        };
+      }
+
+      // ライブ配信
+      if (urlObj.pathname.includes('/live/')) {
+        const liveId = urlObj.pathname.split('/live/')[1].split('?')[0];
+        return {
+          videoId: liveId,
+          type: 'live',
+          firstVideoId: liveId
+        };
+      }
+    }
+
+    return {
+      videoId: null,
+      type: null,
+      firstVideoId: null
+    };
+  } catch (error) {
+    console.error('YouTube URL解析エラー:', error);
+    return {
+      videoId: null,
+      type: null,
+      firstVideoId: null
+    };
+  }
+}

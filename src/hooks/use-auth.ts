@@ -77,6 +77,21 @@ export const useAuth = () => {
     }
   };
 
+  const updateDiscordId = async (uid: string, discordId: string) => {
+    try {
+      await setDoc(doc(db, "users", uid), {
+        discordId,
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
+      return { success: true };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  };
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
@@ -106,17 +121,14 @@ export const useAuth = () => {
     }
   };
 
-  const register = async (email: string, password: string, discordId: string) => {
+  const register = async (email: string, password: string, discordId: string | null = null) => {
     try {
       console.log("新規ユーザー登録を開始します");
       console.log("入力値確認 - Email:", email, "DiscordID:", discordId);
       
-      // Discord IDの前処理
-      const trimmedDiscordId = discordId.trim();
-      if (!trimmedDiscordId) {
-        throw new Error("Discord IDは必須です");
-      }
-      console.log("Discord ID確認:", trimmedDiscordId);
+      // Discord IDの前処理（任意項目）
+      const trimmedDiscordId = discordId ? discordId.trim() : null;
+      console.log("DiscordID確認:", trimmedDiscordId);
 
       const result = await createUserWithEmailAndPassword(auth, email, password);
       console.log("Authentication登録完了:", result.user.uid);
@@ -200,5 +212,6 @@ export const useAuth = () => {
     userRole,
     getDefaultRole,
     setDefaultRole,
+    updateDiscordId,
   };
 }; 

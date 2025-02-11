@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1280" height="720" viewBox="0 0 1280 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1280" height="720" fill="#1E293B"/>
+  <g transform="translate(440, 210)">
+    <!-- プレイリストアイコン -->
+    <rect x="0" y="0" width="400" height="300" rx="20" fill="#334155"/>
+    <rect x="40" y="40" width="320" height="40" rx="8" fill="#475569"/>
+    <rect x="40" y="100" width="320" height="40" rx="8" fill="#475569"/>
+    <rect x="40" y="160" width="320" height="40" rx="8" fill="#475569"/>
+    <rect x="40" y="220" width="240" height="40" rx="8" fill="#475569"/>
+  </g>
+</svg> 

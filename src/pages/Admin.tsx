@@ -9,10 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { X, Search, SortAsc, SortDesc, FileSpreadsheet, Grid, Table2, UserCog } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useFirestore } from "@/hooks/use-firestore";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth, type UserRole } from "@/hooks/use-auth";
 import type { Video } from "@/data/videos";
 import VideoCard from "@/components/VideoCard";
-import { exportToXLSX } from "@/lib/utils";
+import { exportToXLSX, parseYouTubeUrl, getYouTubeThumbnailUrl } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,11 +33,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-type SortField = "title" | "date" | "category";
-type SortOrder = "asc" | "desc";
-type ViewMode = "grid" | "table";
-type UserRole = "visitor" | "subscriber" | "admin";
-
 interface User {
   id: string;
   email: string | null;
@@ -46,10 +41,14 @@ interface User {
   createdAt: string;
 }
 
+type SortField = "title" | "date" | "category";
+type SortOrder = "asc" | "desc";
+type ViewMode = "grid" | "table";
+
 const Admin = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { user, userRole, loading, getDefaultRole, setDefaultRole } = useAuth();
+  const { user, userRole, loading, getDefaultRole, setDefaultRole, updateDiscordId } = useAuth();
   const {
     getVideos,
     addVideo,
@@ -116,7 +115,14 @@ const Admin = () => {
     const fetchUsers = async () => {
       try {
         const fetchedUsers = await getAllUsers();
-        setUsers(fetchedUsers);
+        const formattedUsers: User[] = fetchedUsers.map(user => ({
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          discordId: user.discordId || null,
+          createdAt: user.createdAt
+        }));
+        setUsers(formattedUsers);
       } catch (error) {
         console.error("ユーザー情報の取得に失敗しました:", error);
         toast({
@@ -134,15 +140,30 @@ const Admin = () => {
     e.preventDefault();
     
     try {
+      const { videoId, type, firstVideoId } = parseYouTubeUrl(newVideo.url);
+      if (!videoId || !type) {
+        throw new Error("Invalid YouTube URL");
+      }
+
+      // サムネイルURLを取得
+      const thumbnailUrl = getYouTubeThumbnailUrl(
+        videoId,
+        type,
+        firstVideoId
+      );
+
       if (editingVideo) {
         // 編集モード
         const videoToUpdate = {
           ...editingVideo,
           title: newVideo.title,
           description: newVideo.description,
+          url: newVideo.url,
           category: newVideo.category,
           tags: newVideo.tags,
           date: newVideo.date,
+          thumbnailUrl,
+          type, // 動画タイプも保存
         };
 
         await updateVideo(videoToUpdate);
@@ -156,17 +177,11 @@ const Admin = () => {
         setEditingVideo(null);
       } else {
         // 新規追加モード
-        const videoId = new URL(newVideo.url).searchParams.get("v");
-        if (!videoId) {
-          throw new Error("Invalid YouTube URL");
-        }
-
-        const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
-        
         const videoToAdd = {
           id: (videos.length + 1).toString(),
           ...newVideo,
           thumbnailUrl,
+          type, // 動画タイプも保存
         };
 
         await addVideo(videoToAdd);
@@ -371,7 +386,7 @@ const Admin = () => {
   const handleDiscordIdUpdate = async () => {
     if (!user) return;
     try {
-      await updateUserDiscordId(user.uid, newDiscordId);
+      await updateDiscordId(user.uid, newDiscordId);
       setUsers(users.map(u => u.id === user.uid ? { ...u, discordId: newDiscordId } : u));
       setIsEditingDiscordId(false);
       toast({
@@ -610,14 +625,14 @@ const Admin = () => {
                 <Badge className="mt-1">{userRole}</Badge>
               </div>
               <div className="col-span-2">
-                <Label>Discord ID</Label>
+                <Label>Discord ID設定</Label>
                 <div className="flex gap-2 mt-1">
                   {isEditingDiscordId ? (
                     <>
                       <Input
                         value={newDiscordId}
                         onChange={(e) => setNewDiscordId(e.target.value)}
-                        placeholder="新しいDiscord IDを入力..."
+                        placeholder="Discord IDを入力..."
                       />
                       <Button onClick={handleDiscordIdUpdate}>保存</Button>
                       <Button variant="outline" onClick={() => setIsEditingDiscordId(false)}>
@@ -626,11 +641,12 @@ const Admin = () => {
                     </>
                   ) : (
                     <>
-                      <p className="py-2">
-                        {users.find(u => u.id === user?.uid)?.discordId || "未設定"}
-                      </p>
+                      <div className="py-2">
+                        <span>{users.find(u => u.id === user?.uid)?.discordId || "未設定"}</span>
+                      </div>
                       <Button variant="outline" onClick={() => {
-                        setNewDiscordId(users.find(u => u.id === user?.uid)?.discordId || "");
+                        const currentUser = users.find(u => u.id === user?.uid);
+                        setNewDiscordId(currentUser?.discordId || "");
                         setIsEditingDiscordId(true);
                       }}>
                         編集
@@ -643,9 +659,9 @@ const Admin = () => {
           </div>
         </div>
 
-        {/* 新規ユーザーのデフォルトロール設定 */}
+        {/* 新規ユーザーのデフォルト設定 */}
         <div className="bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-xl font-semibold mb-4">新規ユーザーのデフォルトロール設定</h2>
+          <h2 className="text-xl font-semibold mb-4">新規ユーザーのデフォルト設定</h2>
           <div className="space-y-4">
             <div className="flex items-center gap-4">
               <Label htmlFor="defaultRole" className="min-w-[200px]">デフォルトロール</Label>
@@ -664,7 +680,7 @@ const Admin = () => {
               </Select>
             </div>
             <p className="text-sm text-gray-500">
-              このロールは新規登録したユーザーに自動的に割り当てられます。
+              この設定は新規登録したユーザーに自動的に適用されます。
             </p>
           </div>
         </div>
@@ -746,10 +762,12 @@ const Admin = () => {
                 type="url"
                 value={newVideo.url}
                 onChange={(e) => setNewVideo({ ...newVideo, url: e.target.value })}
-                placeholder="https://youtube.com/watch?v=..."
+                placeholder="https://youtube.com/watch?v=... または https://youtu.be/..."
                 required={!editingVideo}
-                disabled={!!editingVideo}
               />
+              <p className="text-sm text-gray-500">
+                通常の動画URL、短縮URL（youtu.be）、ライブ配信URL、プレイリストURLに対応しています
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="category">カテゴリー</Label>

@@ -3,11 +3,12 @@ import { collection, doc, getDocs, setDoc, deleteDoc, getDoc, writeBatch } from 
 import { Video } from "@/data/videos";
 import { getAuth, deleteUser, signInWithEmailAndPassword } from "firebase/auth";
 import { getFunctions, httpsCallable } from "firebase/functions";
+import { UserRole } from "./use-auth";
 
 interface User {
   id: string;
   email: string | null;
-  role: "visitor" | "subscriber" | "admin";
+  role: UserRole;
   discordId: string | null;
   createdAt: string;
 }

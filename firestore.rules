@@ -8,7 +8,6 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated() && 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
@@ -21,29 +20,33 @@ service cloud.firestore {
         );
     }
 
-    // videosコレクションはsubscriberとadminのみ読み取り可能、書き込みは管理者のみ
+    // videosコレクションは認証済みユーザーのみ読み取り可能、管理者のみ書き込み可能
     match /videos/{videoId} {
-      allow read: if isSubscriber();
+      allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
     
-    // usersコレクションは認証済みユーザーは自分のドキュメントのみ読み取り可能、書き込みは管理者のみ
+    // usersコレクションは認証済みユーザーのみアクセス可能
     // ただし、自分のドキュメントの作成は許可
     match /users/{userId} {
       allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       allow create: if isAuthenticated() && 
         request.auth.uid == userId && 
-        request.resource.data.keys().hasAll(['email', 'role', 'discordId', 'createdAt']) &&
-        request.resource.data.discordId is string;
+        request.resource.data.keys().hasAll(['email', 'role', 'createdAt', 'idType', 'customId']) &&
+        request.resource.data.idType in ['discord', 'twitter', 'custom'] &&
+        (request.resource.data.customId == null || request.resource.data.customId is string);
       allow update: if isAdmin() || 
         (request.auth.uid == userId && 
-         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['discordId']));
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['idType', 'customId']) &&
+         request.resource.data.idType in ['discord', 'twitter', 'custom'] &&
+         (request.resource.data.customId == null || request.resource.data.customId is string));
       allow delete: if isAdmin();
     }
     
     // settingsコレクションのpasswordドキュメントは管理者のみアクセス可能
     match /settings/password {
-      allow read, write: if isAdmin();
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
     }
 
     // settingsコレクションのdefaultRoleドキュメントは管理者のみアクセス可能
@@ -51,15 +54,23 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
+
+    // settingsコレクションのdefaultIdTypeドキュメントは管理者のみアクセス可能
+    match /settings/defaultIdType {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() &&
+        request.resource.data.keys().hasAll(['idType', 'updatedAt']) &&
+        request.resource.data.idType in ['discord', 'twitter', 'custom'];
+    }
     
     // admin_settingsコレクションのadmin_passwordドキュメントは管理者のみアクセス可能
     match /admin_settings/admin_password {
       allow read, write: if isAdmin();
     }
     
-    // categoriesコレクションはsubscriberとadminのみ読み取り可能、書き込みは管理者のみ
+    // categoriesコレクションは認証済みユーザーのみ読み取り可能、管理者のみ書き込み可能
     match /categories/{categoryId} {
-      allow read: if isSubscriber();
+      allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
   }
