@@ -41,7 +41,7 @@ git push -u origin main
 2. 新しいプロジェクトを作成
 3. 以下の機能を有効化：
 
-   - Authentication (Google 認証)
+   - Authentication (Email/パスワード認証)
    - Firestore Database
 
 4. Firebase プロジェクトの設定から必要な情報を取得し、`.env`ファイルを作成：
