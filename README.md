@@ -6,6 +6,21 @@
 
 ### 1. リポジトリのクローンと設定
 
+以下の 2 つの方法のいずれかを選択してください：
+
+#### A. GitHub のインポート機能を使用する方法
+
+1. GitHub にログインし、画面右上の「+」ボタン → 「Import repository」を選択
+2. 「The URL for your source repository」に以下の URL を入力：
+   ```
+   https://github.com/gakushiai/seminar-video-archive.git
+   ```
+3. 「Repository name」に任意のリポジトリ名を入力
+4. 「Your new repository details」で非公開(Private)を選択
+5. 「Begin import」をクリックしてインポートを開始
+
+#### B. 直接クローンする方法
+
 ```bash
 # リポジトリをクローン
 git clone https://github.com/gakushiai/seminar-video-archive.git
@@ -18,7 +33,6 @@ git remote remove origin
 git remote add origin https://github.com/[あなたの名前]/seminar-video-archive.git
 git branch -M main
 git push -u origin main
-
 ```
 
 ### 2. Firebase 設定
