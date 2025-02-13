@@ -32,9 +32,8 @@ service cloud.firestore {
       allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       allow create: if isAuthenticated() && 
         request.auth.uid == userId && 
-        request.resource.data.keys().hasAll(['email', 'role', 'createdAt', 'idType', 'customId']) &&
-        request.resource.data.idType in ['discord', 'twitter', 'custom'] &&
-        (request.resource.data.customId == null || request.resource.data.customId is string);
+        request.resource.data.keys().hasAll(['email', 'role', 'createdAt']) &&
+        (request.resource.data.discordId == null || request.resource.data.discordId is string);
       allow update: if isAdmin() || 
         (request.auth.uid == userId && 
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['idType', 'customId']) &&
