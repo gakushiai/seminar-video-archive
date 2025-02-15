@@ -63,6 +63,96 @@ firebase login
 firebase init
 ```
 
+6. Firestore のセキュリティルールを設定：
+
+以下のルールを Firebase Console の Firestore セキュリティルールに貼り付けてください：
+
+```javascript
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isSubscriber() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        (
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'subscriber' ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+        );
+    }
+
+    // videosコレクションは認証済みユーザーのみ読み取り可能、管理者のみ書き込み可能
+    match /videos/{videoId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // usersコレクションは認証済みユーザーのみアクセス可能
+    // ただし、自分のドキュメントの作成は許可
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow create: if isAuthenticated() &&
+        request.auth.uid == userId &&
+        request.resource.data.keys().hasAll(['email', 'role', 'createdAt']) &&
+        (request.resource.data.discordId == null || request.resource.data.discordId is string);
+      allow update: if isAdmin() ||
+        (request.auth.uid == userId &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['idType', 'customId']) &&
+         request.resource.data.idType in ['discord', 'twitter', 'custom'] &&
+         (request.resource.data.customId == null || request.resource.data.customId is string));
+      allow delete: if isAdmin();
+    }
+
+    // settingsコレクションのpasswordドキュメントは管理者のみアクセス可能
+    match /settings/password {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // settingsコレクションのdefaultRoleドキュメントは管理者のみアクセス可能
+    match /settings/defaultRole {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // settingsコレクションのdefaultIdTypeドキュメントは管理者のみアクセス可能
+    match /settings/defaultIdType {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() &&
+        request.resource.data.keys().hasAll(['idType', 'updatedAt']) &&
+        request.resource.data.idType in ['discord', 'twitter', 'custom'];
+    }
+
+    // admin_settingsコレクションのadmin_passwordドキュメントは管理者のみアクセス可能
+    match /admin_settings/admin_password {
+      allow read, write: if isAdmin();
+    }
+
+    // categoriesコレクションは認証済みユーザーのみ読み取り可能、管理者のみ書き込み可能
+    match /categories/{categoryId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+  }
+}
+```
+
+これらのルールは以下のセキュリティ設定を実装します：
+
+- 認証済みユーザーのみがデータにアクセス可能
+- 管理者ユーザーのみが動画の追加・編集・削除が可能
+- ユーザーは自身のプロフィール情報のみ編集可能
+- カテゴリーの管理は管理者のみ可能
+
 ### 3. Netlify デプロイ設定
 
 1. [Netlify](https://www.netlify.com/)でアカウントを作成
