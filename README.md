@@ -55,15 +55,7 @@ VITE_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
 VITE_FIREBASE_APP_ID=your_app_id
 ```
 
-5. Firebase CLI をインストールしてプロジェクトを初期化：
-
-```bash
-npm install -g firebase-tools
-firebase login
-firebase init
-```
-
-6. Firestore のセキュリティルールを設定：
+5. Firestore のセキュリティルールを設定：
 
 以下のルールを Firebase Console の Firestore セキュリティルールに貼り付けてください：
 
